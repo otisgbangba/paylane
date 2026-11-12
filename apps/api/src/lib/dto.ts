@@ -39,6 +39,7 @@ export function mapUser(
     email: user.email,
     phone: user.phone,
     role: user.role,
+    accountType: user.accountType,
     isAdmin: user.role === "ADMIN" || user.role === "SUPER_ADMIN",
     isSuperAdmin: user.role === "SUPER_ADMIN",
     adminSections: sections,

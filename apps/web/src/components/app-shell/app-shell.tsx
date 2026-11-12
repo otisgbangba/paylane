@@ -7,6 +7,7 @@ import {
   BarChart3,
   ChevronDown,
   Code2,
+  Fingerprint,
   Gauge,
   LayoutDashboard,
   LogOut,
@@ -51,6 +52,7 @@ const primaryNav: NavItem[] = [
   { href: "/data", label: "Data bundles", icon: Wifi, activeTint: "bg-sky-soft text-sky" },
   { href: "/cable", label: "Cable TV", icon: Tv, activeTint: "bg-violet-soft text-violet" },
   { href: "/electricity", label: "Electricity", icon: Zap, activeTint: "bg-amber-soft text-[#9a6200]" },
+  { href: "/verify", label: "Identity services", icon: Fingerprint, activeTint: "bg-success-soft text-success" },
   { href: "/wallet", label: "Wallet", icon: Wallet, activeTint: "bg-coral-soft text-coral" },
   { href: "/transactions", label: "Transactions", icon: ReceiptText, activeTint: "bg-white/15 text-white" },
 ];
@@ -65,6 +67,7 @@ const adminNav: NavItem[] = [
   { href: "/admin/users", label: "Customers", icon: Users, activeTint: "bg-sky-soft text-sky", section: "USERS" },
   { href: "/admin/wallets", label: "Wallets", icon: Wallet, activeTint: "bg-coral-soft text-coral", section: "WALLETS" },
   { href: "/admin/transactions", label: "Transactions", icon: BarChart3, activeTint: "bg-amber-soft text-[#9a6200]", section: "TRANSACTIONS" },
+  { href: "/admin/verifications", label: "Identity services", icon: Fingerprint, activeTint: "bg-success-soft text-success", section: "VERIFICATIONS" },
   { href: "/admin/audit", label: "Audit trail", icon: ShieldCheck, activeTint: "bg-white/15 text-white", section: "AUDIT" },
   { href: "/admin/team", label: "Team & access", icon: Users, activeTint: "bg-violet-soft text-violet", superOnly: true },
 ];
@@ -75,6 +78,8 @@ const pageTitles: Record<string, string> = {
   "/data": "Data bundles",
   "/cable": "Cable TV",
   "/electricity": "Electricity",
+  "/verify": "Identity services",
+  "/verify/requests": "Identity requests",
   "/wallet": "Wallet",
   "/transactions": "Transactions",
   "/api-docs": "API documentation",
@@ -83,6 +88,7 @@ const pageTitles: Record<string, string> = {
   "/admin/users": "Customers",
   "/admin/wallets": "Wallets & funding",
   "/admin/transactions": "Platform transactions",
+  "/admin/verifications": "Identity services",
   "/admin/audit": "Audit trail",
   "/admin/team": "Team & access",
 };
@@ -91,6 +97,7 @@ const bottomNav = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/airtime", label: "Airtime", icon: Smartphone },
   { href: "/data", label: "Data", icon: Wifi },
+  { href: "/verify", label: "Identity", icon: Fingerprint },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/transactions", label: "History", icon: ReceiptText },
 ];
@@ -320,7 +327,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Primary"
       >
-        <div className="mx-auto grid max-w-md grid-cols-5 px-2 py-1.5">
+        <div className="mx-auto grid max-w-md grid-cols-6 px-1 py-1.5">
           {bottomNav.map((item) => {
             const active = isActive(pathname, item.href);
             return (

@@ -21,6 +21,16 @@ import {
   updateAdmin,
 } from "./admin.service";
 import { listAllTransactions } from "../transactions/transactions.service";
+import {
+  adminIdentityQuerySchema,
+  updateIdentityProductSchema,
+} from "../identity/identity.schema";
+import {
+  getIdentityOverview,
+  listAllIdentityRequests,
+  listIdentityProducts,
+  updateIdentityProduct,
+} from "../identity/identity.service";
 
 export const adminRouter = Router();
 
@@ -83,6 +93,38 @@ adminRouter.get("/audit", ...requireSection("AUDIT"), async (_req, res) => {
   const events = await listAuditEvents();
   sendSuccess(res, { events }, "Audit trail loaded.");
 });
+
+adminRouter.get("/verifications/overview", ...requireSection("VERIFICATIONS"), async (_req, res) => {
+  const overview = await getIdentityOverview();
+  sendSuccess(res, { overview }, "Identity overview loaded.");
+});
+
+adminRouter.get("/verifications/requests", ...requireSection("VERIFICATIONS"), async (req, res) => {
+  const query = adminIdentityQuerySchema.parse(req.query);
+  const requests = await listAllIdentityRequests(query);
+  sendSuccess(res, { requests }, "Identity requests loaded.");
+});
+
+adminRouter.get("/verifications/products", ...requireSection("VERIFICATIONS"), async (_req, res) => {
+  const products = await listIdentityProducts({ includeInactive: true });
+  sendSuccess(res, { products }, "Identity products loaded.");
+});
+
+adminRouter.patch(
+  "/verifications/products/:code",
+  adminWriteLimiter,
+  ...requireSection("VERIFICATIONS"),
+  validateBody(updateIdentityProductSchema),
+  async (req, res) => {
+    const product = await updateIdentityProduct(
+      actor(req),
+      String(req.params.code),
+      req.body,
+      req,
+    );
+    sendSuccess(res, { product }, "Identity service updated.");
+  },
+);
 
 adminRouter.get("/admins", ...requireSuperAdmin(), async (_req, res) => {
   const administrators = await listAdmins();

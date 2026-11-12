@@ -1,4 +1,4 @@
-import { Flame, Smartphone, Tv, Wifi, Zap, type LucideIcon } from "lucide-react";
+import { Fingerprint, Flame, Smartphone, Tv, Wifi, Zap, type LucideIcon } from "lucide-react";
 import { NETWORKS, type NetworkId } from "@paylane/shared";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +69,7 @@ const serviceIcons: Record<string, { icon: LucideIcon; bg: string; text: string 
   DATA: { icon: Wifi, bg: "bg-sky-soft", text: "text-sky" },
   CABLE: { icon: Tv, bg: "bg-violet-soft", text: "text-violet" },
   ELECTRICITY: { icon: Zap, bg: "bg-amber-soft", text: "text-[#9a6200]" },
+  VERIFICATION: { icon: Fingerprint, bg: "bg-success-soft", text: "text-success" },
   WALLET_FUNDING: { icon: Flame, bg: "bg-coral-soft", text: "text-coral" },
 };
 

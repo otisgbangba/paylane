@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Plus, Smartphone, Tv, Wallet, Wifi, Zap } from "lucide-react";
+import { ArrowRight, Fingerprint, Plus, Smartphone, Tv, Wallet, Wifi, Zap } from "lucide-react";
 import { useWallet } from "@/components/wallet/wallet-provider";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +38,14 @@ const actions = [
     tint: "bg-amber-soft text-[#9a6200]",
     border: "hover:border-amber",
   },
+  {
+    href: "/verify",
+    label: "Identity",
+    copy: "NIN, BVN & slips",
+    icon: Fingerprint,
+    tint: "bg-success-soft text-success",
+    border: "hover:border-success",
+  },
 ];
 
 export function QuickActions() {
@@ -59,7 +67,7 @@ export function QuickActions() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
         {actions.map((action) => (
           <Link
             key={action.href}

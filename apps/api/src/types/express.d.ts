@@ -1,5 +1,5 @@
 import type { AdminSection } from "@paylane/shared";
-import type { UserRow } from "../db/schema";
+import type { ApiKeyRow, UserRow } from "../db/schema";
 
 declare global {
   namespace Express {
@@ -7,6 +7,10 @@ declare global {
       auth?: {
         user: UserRow;
         sections: AdminSection[];
+      };
+      apiKeyAuth?: {
+        user: UserRow;
+        apiKey: ApiKeyRow;
       };
       rawBody?: Buffer;
     }

@@ -7,6 +7,8 @@ import { vtuRouter } from "./modules/vtu/vtu.routes";
 import { transactionsRouter } from "./modules/transactions/transactions.routes";
 import { adminRouter } from "./modules/admin/admin.routes";
 import { webhookRouter } from "./modules/webhooks/webhook.routes";
+import { identityRouter, verifyRouter } from "./modules/identity/identity.routes";
+import { developerRouter } from "./modules/developer/developer.routes";
 
 export const apiRouter = Router();
 
@@ -22,6 +24,9 @@ apiRouter.use("/auth", authRouter);
 apiRouter.use("/wallet", walletRouter);
 apiRouter.use("/catalog", catalogRouter);
 apiRouter.use("/services", vtuRouter);
+apiRouter.use("/identity", identityRouter);
+apiRouter.use("/verify", verifyRouter);
+apiRouter.use("/developer", developerRouter);
 apiRouter.use("/transactions", transactionsRouter);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/webhooks", webhookRouter);

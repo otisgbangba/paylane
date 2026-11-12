@@ -69,6 +69,30 @@ const ENDPOINT_GROUPS: {
     ],
   },
   {
+    title: "Identity",
+    icon: Fingerprint,
+    tint: "bg-success-soft text-success",
+    routes: [
+      { method: "GET", path: "/identity/products", description: "Public catalogue with prices, fields and vendor mode." },
+      { method: "POST", path: "/identity/requests", description: "Dashboard checkout. Requires PIN, consent and Idempotency-Key." },
+      { method: "GET", path: "/identity/requests", description: "The signed-in customer's identity requests." },
+      { method: "GET", path: "/identity/requests/:reference", description: "One request with its result or acknowledgement." },
+      { method: "POST", path: "/api/v1/verify/:service", description: "Bearer API key. No PIN; consent is required in the body." },
+      { method: "GET", path: "/api/v1/verify", description: "Public discovery of services, fields and auth format." },
+    ],
+  },
+  {
+    title: "Developer keys",
+    icon: KeyRound,
+    tint: "bg-violet-soft text-violet",
+    routes: [
+      { method: "GET", path: "/developer/status", description: "Vendor mode: HTTP when configured, otherwise sandbox." },
+      { method: "GET", path: "/developer/keys", description: "List keys with prefix, environment and last use." },
+      { method: "POST", path: "/developer/keys", description: "Issue a key. The secret is returned once." },
+      { method: "DELETE", path: "/developer/keys/:id", description: "Revoke a key immediately." },
+    ],
+  },
+  {
     title: "Transactions",
     icon: BadgeCheck,
     tint: "bg-amber-soft text-[#9a6200]",
@@ -88,6 +112,9 @@ const ENDPOINT_GROUPS: {
       { method: "GET", path: "/admin/wallets?q=", description: "Section: WALLETS." },
       { method: "PATCH", path: "/admin/users/:id/wallet", description: "Section: WALLETS. Freeze or restore." },
       { method: "GET", path: "/admin/transactions", description: "Section: TRANSACTIONS." },
+      { method: "GET", path: "/admin/verifications/overview", description: "Section: VERIFICATIONS." },
+      { method: "GET", path: "/admin/verifications/requests?q=&status=", description: "Section: VERIFICATIONS." },
+      { method: "PATCH", path: "/admin/verifications/products/:code", description: "Section: VERIFICATIONS. Price, turnaround or active state." },
       { method: "GET", path: "/admin/audit", description: "Section: AUDIT." },
       { method: "GET", path: "/admin/admins", description: "Super administrator only." },
       { method: "POST", path: "/admin/admins", description: "Super administrator only. Create a scoped admin." },
@@ -138,6 +165,35 @@ const CURL_EXAMPLE = `curl -X POST https://your-host/api/v1/services/airtime \\
     "pin": "1234"
   }'`;
 
+const IDENTITY_CURL = `curl -X POST https://your-host/api/v1/verify/nin-verification \\
+  -H "Authorization: Bearer plk_live_..." \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: 6f3d9c2a-nin-001" \\
+  -d '{
+    "fields": { "nin": "12345678901" },
+    "consent": true
+  }'`;
+
+const IDENTITY_RESPONSE = `{
+  "success": true,
+  "status": "success",
+  "message": "NIN verified successfully.",
+  "data": {
+    "request": {
+      "reference": "PL-8F2K9",
+      "status": "SUCCESS",
+      "subjectMasked": "•••• •••• 901",
+      "result": {
+        "kind": "IDENTITY",
+        "fields": [{ "label": "Full name", "value": "ADAEZE C. OKAFOR" }],
+        "document": null
+      }
+    },
+    "wallet": { "balanceKobo": 3980000 }
+  },
+  "meta": { "requestId": "req_01H..." }
+}`;
+
 const WEBHOOK_EXAMPLE = `POST /api/v1/webhooks/vendor/:providerCode
 x-paylane-signature: sha256=<hex hmac of raw body>
 
@@ -149,15 +205,15 @@ x-paylane-signature: sha256=<hex hmac of raw body>
 }`;
 
 const ERROR_CODES = [
-  { code: "AUTH_REQUIRED", status: "401", meaning: "No session cookie or bearer token." },
+  { code: "AUTH_REQUIRED", status: "401", meaning: "No session cookie, bearer token or valid API key." },
   { code: "AUTH_INVALID_CREDENTIALS", status: "401", meaning: "Wrong email or password." },
   { code: "AUTH_PIN_INVALID", status: "401", meaning: "Wrong transaction PIN." },
   { code: "AUTH_PIN_LOCKED", status: "423", meaning: "Five failed PIN attempts. Wait 10 minutes." },
   { code: "AUTH_PIN_NOT_SET", status: "409", meaning: "Set a PIN before buying." },
   { code: "AUTH_FORBIDDEN", status: "403", meaning: "Missing admin section or inactive account." },
-  { code: "VALIDATION_ERROR", status: "422", meaning: "Body or query failed schema validation." },
-  { code: "INSUFFICIENT_FUNDS", status: "422", meaning: "Wallet balance cannot cover the total." },
-  { code: "WALLET_FROZEN", status: "423", meaning: "The wallet is frozen pending review." },
+  { code: "VALIDATION_ERROR", status: "422", meaning: "Body or query failed schema validation, including missing consent." },
+  { code: "INSUFFICIENT_FUNDS", status: "402", meaning: "Wallet balance cannot cover the total." },
+  { code: "WALLET_FROZEN", status: "403", meaning: "The wallet is frozen pending review." },
   { code: "IDEMPOTENCY_CONFLICT", status: "409", meaning: "Key reused with a different payload." },
   { code: "PROVIDER_REJECTED", status: "422", meaning: "Vendor declined; the wallet is refunded." },
   { code: "PROVIDER_UNAVAILABLE", status: "503", meaning: "No healthy provider adapter." },
@@ -185,8 +241,9 @@ export default function ApiDocsPage() {
             Paylane v1 API
           </h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink/55">
-            One envelope, signed webhooks and idempotent money movement. Every endpoint below is
-            live in this workspace under <span className="font-mono text-ink/70">/api/v1</span>.
+            One envelope, signed webhooks and idempotent money movement, for identity checks and
+            everyday top-ups. Every endpoint below is live in this workspace under{" "}
+            <span className="font-mono text-ink/70">/api/v1</span>.
           </p>
         </div>
         <span className="chip w-fit bg-white text-[0.62rem] text-ink/55">
@@ -208,7 +265,7 @@ export default function ApiDocsPage() {
             icon: KeyRound,
             title: "Auth",
             copy: "paylane_session",
-            detail: "HttpOnly cookie, or Authorization: Bearer",
+            detail: "HttpOnly cookie, or Bearer plk_live_…",
             tint: "bg-violet-soft text-violet",
           },
           {
@@ -304,6 +361,8 @@ export default function ApiDocsPage() {
                 ["Phone ends 1111", "Primary fails over, then fails"],
                 ["Meter ends 00", "Settles PENDING"],
                 ["Smartcard/meter ends 000", "Verification fails"],
+                ["NIN/BVN starts 999", "Vendor timeout + refund"],
+                ["NIN/BVN ends 0000", "Record not found + refund"],
               ].map(([trigger, result]) => (
                 <div
                   key={trigger}
@@ -364,6 +423,32 @@ export default function ApiDocsPage() {
           ))}
         </div>
       </section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="card p-4 sm:p-5">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-xl bg-success-soft text-success">
+              <Fingerprint className="size-4" aria-hidden />
+            </span>
+            <h3 className="font-display text-base font-bold text-ink">Verify an identity</h3>
+          </div>
+          <p className="mb-3 mt-1 text-[0.68rem] leading-relaxed text-muted">
+            Use a <span className="font-mono text-ink/70">plk_live_</span> or{" "}
+            <span className="font-mono text-ink/70">plk_test_</span> key from settings. The PIN is
+            not required for API keys, but <span className="font-mono text-ink/70">consent</span>{" "}
+            must be <span className="font-mono text-ink/70">true</span>.
+          </p>
+          <CodeBlock code={IDENTITY_CURL} label="curl" />
+        </section>
+        <section className="card p-4 sm:p-5">
+          <h3 className="font-display text-base font-bold text-ink">Identity response</h3>
+          <p className="mb-3 mt-0.5 text-[0.68rem] leading-relaxed text-muted">
+            A failed vendor call still returns the request, so you can persist the reference and
+            confirm the refund against the wallet.
+          </p>
+          <CodeBlock code={IDENTITY_RESPONSE} label="200 · success" />
+        </section>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card p-4 sm:p-5">

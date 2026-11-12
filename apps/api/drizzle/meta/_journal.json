@@ -8,6 +8,13 @@
       "when": 1794414303485,
       "tag": "0000_sloppy_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794470184690,
+      "tag": "0001_fluffy_misty_knight",
+      "breakpoints": true
     }
   ]
 }

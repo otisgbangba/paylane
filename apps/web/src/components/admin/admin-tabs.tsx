@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Fingerprint,
   Gauge,
   ShieldCheck,
   Users,
@@ -17,6 +18,7 @@ const TABS: { href: string; label: string; icon: LucideIcon; match: (path: strin
   { href: "/admin/users", label: "Customers", icon: Users, match: (path) => path.startsWith("/admin/users") },
   { href: "/admin/wallets", label: "Wallets", icon: Wallet, match: (path) => path.startsWith("/admin/wallets") },
   { href: "/admin/transactions", label: "Transactions", icon: BarChart3, match: (path) => path.startsWith("/admin/transactions") },
+  { href: "/admin/verifications", label: "Identity", icon: Fingerprint, match: (path) => path.startsWith("/admin/verifications") },
   { href: "/admin/audit", label: "Audit", icon: ShieldCheck, match: (path) => path.startsWith("/admin/audit") },
   { href: "/admin/team", label: "Team & access", icon: Users, match: (path) => path.startsWith("/admin/team") },
 ];
@@ -34,6 +36,7 @@ export function AdminTabs({
     "/admin/users": "USERS",
     "/admin/wallets": "WALLETS",
     "/admin/transactions": "TRANSACTIONS",
+    "/admin/verifications": "VERIFICATIONS",
     "/admin/audit": "AUDIT",
     "/admin/team": "TEAM",
   };

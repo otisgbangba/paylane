@@ -11,16 +11,19 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { IdentityFieldDef, IdentityResultDTO } from "@paylane/shared";
 
 /* ── Enums ───────────────────────────────────────────────────────────────── */
 
 export const userRoleEnum = pgEnum("user_role", ["USER", "ADMIN", "SUPER_ADMIN"]);
+export const accountTypeEnum = pgEnum("account_type", ["INDIVIDUAL", "AGENT", "ORGANISATION"]);
 export const walletStatusEnum = pgEnum("wallet_status", ["ACTIVE", "FROZEN"]);
 export const transactionTypeEnum = pgEnum("transaction_type", [
   "AIRTIME",
   "DATA",
   "CABLE",
   "ELECTRICITY",
+  "VERIFICATION",
   "WALLET_FUNDING",
 ]);
 export const transactionStatusEnum = pgEnum("transaction_status", [
@@ -35,6 +38,7 @@ export const adminSectionEnum = pgEnum("admin_section", [
   "USERS",
   "WALLETS",
   "TRANSACTIONS",
+  "VERIFICATIONS",
   "AUDIT",
   "TEAM",
 ]);
@@ -42,6 +46,25 @@ export const networkEnum = pgEnum("network", ["MTN", "AIRTEL", "GLO", "ETISALAT"
 export const cableProviderEnum = pgEnum("cable_provider", ["DSTV", "GOTV", "STARTIMES"]);
 export const meterTypeEnum = pgEnum("meter_type", ["PREPAID", "POSTPAID"]);
 export const providerStatusEnum = pgEnum("provider_status", ["ACTIVE", "INACTIVE"]);
+export const identityCategoryEnum = pgEnum("identity_category", [
+  "LOOKUP",
+  "SLIP",
+  "RECORD",
+  "ENROLMENT",
+]);
+export const identityResultKindEnum = pgEnum("identity_result_kind", [
+  "IDENTITY",
+  "DOCUMENT",
+  "ACKNOWLEDGEMENT",
+]);
+export const identityRequestStatusEnum = pgEnum("identity_request_status", [
+  "PENDING",
+  "PROCESSING",
+  "SUCCESS",
+  "FAILED",
+  "REFUNDED",
+]);
+export const apiKeyEnvironmentEnum = pgEnum("api_key_environment", ["LIVE", "TEST"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -59,6 +82,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   pinHash: text("pin_hash"),
   role: userRoleEnum("role").notNull().default("USER"),
+  accountType: accountTypeEnum("account_type").notNull().default("INDIVIDUAL"),
   isActive: boolean("is_active").notNull().default(true),
   pinAttempts: integer("pin_attempts").notNull().default(0),
   pinLockedUntil: timestamp("pin_locked_until", { withTimezone: true }),
@@ -252,6 +276,88 @@ export const electricityDiscos = pgTable("electricity_discos", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
+/* ── Identity verification ───────────────────────────────────────────────── */
+
+/** Priced, switchable identity service. Fields drive the dynamic client form. */
+export const verificationProducts = pgTable(
+  "verification_products",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    code: text("code").notNull().unique(),
+    name: text("name").notNull(),
+    tagline: text("tagline").notNull(),
+    description: text("description").notNull(),
+    category: identityCategoryEnum("category").notNull(),
+    priceKobo: bigint("price_kobo", { mode: "number" }).notNull(),
+    turnaroundLabel: text("turnaround_label").notNull(),
+    resultKind: identityResultKindEnum("result_kind").notNull(),
+    fields: jsonb("fields").$type<IdentityFieldDef[]>().notNull().default([]),
+    popular: boolean("popular").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(100),
+    ...timestamps,
+  },
+  (table) => [index("verification_products_category_idx").on(table.category)],
+);
+
+/** Customer-issued API key. Only the SHA-256 hash is stored. */
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    prefix: text("prefix").notNull().unique(),
+    keyHash: text("key_hash").notNull().unique(),
+    environment: apiKeyEnvironmentEnum("environment").notNull().default("LIVE"),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("api_keys_user_idx").on(table.userId)],
+);
+
+/**
+ * One row per paid identity request. Raw NIN/BVN inputs are never persisted:
+ * only a digest and a masked subject, so the record stays useful without
+ * keeping the data it was built from.
+ */
+export const verificationRequests = pgTable(
+  "verification_requests",
+  {
+    id: uuid("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => verificationProducts.id, { onDelete: "restrict" }),
+    transactionId: uuid("transaction_id").references(() => transactions.id, {
+      onDelete: "set null",
+    }),
+    apiKeyId: uuid("api_key_id").references(() => apiKeys.id, { onDelete: "set null" }),
+    reference: text("reference").notNull().unique(),
+    status: identityRequestStatusEnum("status").notNull().default("PENDING"),
+    amountKobo: bigint("amount_kobo", { mode: "number" }).notNull(),
+    subjectMasked: text("subject_masked").notNull(),
+    summary: text("summary").notNull(),
+    inputDigest: text("input_digest").notNull(),
+    result: jsonb("result").$type<IdentityResultDTO>(),
+    failureReason: text("failure_reason"),
+    providerRef: text("provider_ref"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("verification_requests_transaction_unique").on(table.transactionId),
+    index("verification_requests_user_created_idx").on(table.userId, table.createdAt),
+    index("verification_requests_status_idx").on(table.status),
+    index("verification_requests_product_idx").on(table.productId),
+  ],
+);
+
 /* ── Auditing ────────────────────────────────────────────────────────────── */
 
 export const auditLogs = pgTable(
@@ -284,3 +390,6 @@ export type CablePlanRow = typeof cablePlans.$inferSelect;
 export type ElectricityDiscoRow = typeof electricityDiscos.$inferSelect;
 export type AdminGrantRow = typeof adminGrants.$inferSelect;
 export type AuditLogRow = typeof auditLogs.$inferSelect;
+export type VerificationProductRow = typeof verificationProducts.$inferSelect;
+export type VerificationRequestRow = typeof verificationRequests.$inferSelect;
+export type ApiKeyRow = typeof apiKeys.$inferSelect;

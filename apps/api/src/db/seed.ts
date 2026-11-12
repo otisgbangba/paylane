@@ -1,5 +1,10 @@
 import { count, eq } from "drizzle-orm";
-import type { TransactionStatus, TransactionType } from "@paylane/shared";
+import {
+  IDENTITY_SERVICES,
+  type AccountType,
+  type TransactionStatus,
+  type TransactionType,
+} from "@paylane/shared";
 import { closeDatabase, db } from "./client";
 import {
   adminGrants,
@@ -10,6 +15,7 @@ import {
   serviceProviders,
   transactions,
   users,
+  verificationProducts,
   wallets,
   type UserRow,
 } from "./schema";
@@ -26,6 +32,7 @@ interface SeedUserInput {
   password: string;
   pin?: string;
   role?: "USER" | "ADMIN" | "SUPER_ADMIN";
+  accountType?: AccountType;
 }
 
 interface SeedEvent {
@@ -55,6 +62,7 @@ async function ensureUser(input: SeedUserInput): Promise<UserRow> {
       passwordHash: await hashPassword(input.password),
       pinHash: input.pin ? await hashPin(input.pin) : null,
       role: input.role ?? "USER",
+      accountType: input.accountType ?? "INDIVIDUAL",
     })
     .returning();
   if (!created) throw new Error(`Could not create seed user ${input.email}`);
@@ -258,6 +266,27 @@ async function seedCatalog(): Promise<void> {
   }
 }
 
+async function seedIdentityProducts(): Promise<void> {
+  for (const [index, service] of IDENTITY_SERVICES.entries()) {
+    await db
+      .insert(verificationProducts)
+      .values({
+        code: service.id,
+        name: service.name,
+        tagline: service.tagline,
+        description: service.description,
+        category: service.category,
+        priceKobo: service.priceKobo,
+        turnaroundLabel: service.turnaroundLabel,
+        resultKind: service.resultKind,
+        fields: service.fields,
+        popular: service.popular ?? false,
+        sortOrder: (index + 1) * 10,
+      })
+      .onConflictDoNothing();
+  }
+}
+
 async function seedTeam(): Promise<void> {
   const superAdmin = await ensureUser({
     firstName: "Chinedu",
@@ -272,7 +301,7 @@ async function seedTeam(): Promise<void> {
   await db
     .insert(adminGrants)
     .values(
-      (["OVERVIEW", "USERS", "WALLETS", "TRANSACTIONS", "AUDIT", "TEAM"] as const).map(
+      (["OVERVIEW", "USERS", "WALLETS", "TRANSACTIONS", "VERIFICATIONS", "AUDIT", "TEAM"] as const).map(
         (section) => ({ userId: superAdmin.id, section, grantedById: superAdmin.id }),
       ),
     )
@@ -291,7 +320,7 @@ async function seedTeam(): Promise<void> {
   await db
     .insert(adminGrants)
     .values(
-      (["OVERVIEW", "USERS", "WALLETS", "TRANSACTIONS"] as const).map((section) => ({
+      (["OVERVIEW", "USERS", "WALLETS", "TRANSACTIONS", "VERIFICATIONS"] as const).map((section) => ({
         userId: opsAdmin.id,
         section,
         grantedById: superAdmin.id,
@@ -385,6 +414,7 @@ async function main(): Promise<void> {
   console.log("[seed] Seeding Paylane demo data…");
   await seedProviders();
   await seedCatalog();
+  await seedIdentityProducts();
   await seedTeam();
   await seedCustomers();
   console.log("[seed] Done.");

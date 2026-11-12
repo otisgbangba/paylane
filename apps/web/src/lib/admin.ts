@@ -7,6 +7,7 @@ export const ADMIN_HOME: Record<AdminSection, string> = {
   USERS: "/admin/users",
   WALLETS: "/admin/wallets",
   TRANSACTIONS: "/admin/transactions",
+  VERIFICATIONS: "/admin/verifications",
   AUDIT: "/admin/audit",
   TEAM: "/admin/team",
 };

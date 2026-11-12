@@ -60,11 +60,13 @@ export type ApiErrorCode =
 
 export type UserRole = "USER" | "ADMIN" | "SUPER_ADMIN";
 export type WalletStatus = "ACTIVE" | "FROZEN";
+export type AccountType = "INDIVIDUAL" | "AGENT" | "ORGANISATION";
 export type TransactionType =
   | "AIRTIME"
   | "DATA"
   | "CABLE"
   | "ELECTRICITY"
+  | "VERIFICATION"
   | "WALLET_FUNDING";
 export type TransactionStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
 export type LedgerEntryType = "CREDIT" | "DEBIT" | "REFUND";
@@ -72,6 +74,463 @@ export type NetworkId = "MTN" | "AIRTEL" | "GLO" | "ETISALAT";
 export type CableProviderId = "DSTV" | "GOTV" | "STARTIMES";
 export type MeterType = "PREPAID" | "POSTPAID";
 export type FundingMethod = "CARD" | "BANK_TRANSFER";
+
+export const ACCOUNT_TYPES: { id: AccountType; label: string; description: string }[] = [
+  {
+    id: "INDIVIDUAL",
+    label: "Individual",
+    description: "Personal checks, slips and record updates for yourself or your family.",
+  },
+  {
+    id: "AGENT",
+    label: "Agent / cyber café",
+    description: "Run checks and enrolments for walk-in customers at a desk or shop.",
+  },
+  {
+    id: "ORGANISATION",
+    label: "Organisation",
+    description: "Bulk verification for schools, employers, fintechs and cooperatives.",
+  },
+];
+
+/* ── Identity services ───────────────────────────────────────────────────── */
+
+export type IdentityServiceId =
+  | "NIN_VERIFICATION"
+  | "BVN_VERIFICATION"
+  | "NIN_SLIP"
+  | "IPE_CLEARANCE"
+  | "NIN_PERSONALIZATION"
+  | "NIN_DELINKING"
+  | "NIN_NAME_CHANGE"
+  | "NIN_PHONE_CHANGE"
+  | "NIN_DOB_CHANGE"
+  | "NIN_ADDRESS_CHANGE"
+  | "NIN_CHILD_ENROLMENT"
+  | "NIN_ADULT_ENROLMENT";
+
+export type IdentityCategory = "LOOKUP" | "SLIP" | "RECORD" | "ENROLMENT";
+export type IdentityResultKind = "IDENTITY" | "DOCUMENT" | "ACKNOWLEDGEMENT";
+export type IdentityRequestStatus = "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED" | "REFUNDED";
+
+export type IdentityFieldType =
+  | "text"
+  | "nin"
+  | "bvn"
+  | "phone"
+  | "email"
+  | "date"
+  | "select"
+  | "textarea";
+
+export interface IdentityFieldDef {
+  name: string;
+  label: string;
+  type: IdentityFieldType;
+  required: boolean;
+  placeholder?: string;
+  hint?: string;
+  maxLength?: number;
+  options?: { value: string; label: string }[];
+  /** Sensitive input: never echoed back in responses and purged after settlement. */
+  secret?: boolean;
+}
+
+export interface IdentityServiceDef {
+  id: IdentityServiceId;
+  code: string;
+  name: string;
+  tagline: string;
+  description: string;
+  category: IdentityCategory;
+  priceKobo: number;
+  turnaroundLabel: string;
+  resultKind: IdentityResultKind;
+  popular?: boolean;
+  fields: IdentityFieldDef[];
+}
+
+export const IDENTITY_CATEGORIES: {
+  id: IdentityCategory;
+  label: string;
+  description: string;
+}[] = [
+  { id: "LOOKUP", label: "Instant checks", description: "Records returned in seconds." },
+  { id: "SLIP", label: "Slips & documents", description: "Downloadable NIN slip and IPE clearance." },
+  { id: "RECORD", label: "Record updates", description: "Changes and corrections on an existing record." },
+  { id: "ENROLMENT", label: "Enrolment", description: "New NIN enrolment for children, adults and diaspora." },
+];
+
+const NIN_FIELD: IdentityFieldDef = {
+  name: "nin",
+  label: "National Identification Number (NIN)",
+  type: "nin",
+  required: true,
+  placeholder: "1234 5678 901",
+  hint: "11 digits, printed on your NIN slip or dial *346#",
+  maxLength: 11,
+  secret: true,
+};
+
+const BVN_FIELD: IdentityFieldDef = {
+  name: "bvn",
+  label: "Bank Verification Number (BVN)",
+  type: "bvn",
+  required: true,
+  placeholder: "1234 5678 901",
+  hint: "11 digits; send *565*0# from your registered line",
+  maxLength: 11,
+  secret: true,
+};
+
+const PHONE_FIELD: IdentityFieldDef = {
+  name: "phone",
+  label: "Linked mobile number",
+  type: "phone",
+  required: true,
+  placeholder: "0803 123 4567",
+  secret: true,
+};
+
+const DOB_FIELD: IdentityFieldDef = {
+  name: "dateOfBirth",
+  label: "Date of birth",
+  type: "date",
+  required: true,
+  hint: "As captured on the record",
+};
+
+export const IDENTITY_SERVICES: IdentityServiceDef[] = [
+  {
+    id: "NIN_VERIFICATION",
+    code: "nin-verification",
+    name: "NIN verification",
+    tagline: "Confirm a NIN and match it to a name",
+    description:
+      "Confirms that a NIN exists and returns the record's name, date of birth and photograph reference so you can match it against the customer in front of you.",
+    category: "LOOKUP",
+    priceKobo: 20_000,
+    turnaroundLabel: "Instant",
+    resultKind: "IDENTITY",
+    popular: true,
+    fields: [NIN_FIELD],
+  },
+  {
+    id: "BVN_VERIFICATION",
+    code: "bvn-verification",
+    name: "BVN verification",
+    tagline: "Match a BVN to its account holder",
+    description:
+      "Checks a BVN against the banking database and returns the registered name and date of birth. Useful for onboarding, loan checks and beneficiary screening.",
+    category: "LOOKUP",
+    priceKobo: 25_000,
+    turnaroundLabel: "Instant",
+    resultKind: "IDENTITY",
+    popular: true,
+    fields: [BVN_FIELD, DOB_FIELD],
+  },
+  {
+    id: "NIN_SLIP",
+    code: "nin-slip",
+    name: "NIN slip retrieval",
+    tagline: "Download the standard NIN slip",
+    description:
+      "Retrieves the standard NIN slip for a verified record as a downloadable document you can present to banks, schools and government offices.",
+    category: "SLIP",
+    priceKobo: 30_000,
+    turnaroundLabel: "Under 1 minute",
+    resultKind: "DOCUMENT",
+    popular: true,
+    fields: [NIN_FIELD],
+  },
+  {
+    id: "IPE_CLEARANCE",
+    code: "ipe-clearance",
+    name: "IPE clearance",
+    tagline: "Clear an Identity Premium Entry (IPE)",
+    description:
+      "Raises the clearance request that moves a record past the IPE exception so identity documents can be issued or updated without a manual visit.",
+    category: "SLIP",
+    priceKobo: 150_000,
+    turnaroundLabel: "Same day",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [NIN_FIELD, { ...PHONE_FIELD, hint: "The number attached to the record" }],
+  },
+  {
+    id: "NIN_PERSONALIZATION",
+    code: "nin-personalization",
+    name: "NIN personalisation",
+    tagline: "Print a personalised NIN card",
+    description:
+      "Queues a personalised NIN card for a validated record and returns the collection reference and the centre where it will be ready.",
+    category: "SLIP",
+    priceKobo: 250_000,
+    turnaroundLabel: "3 to 5 working days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      NIN_FIELD,
+      PHONE_FIELD,
+      {
+        name: "state",
+        label: "Collection state",
+        type: "select",
+        required: true,
+        options: [
+          "Lagos",
+          "Abuja (FCT)",
+          "Rivers",
+          "Oyo",
+          "Kano",
+          "Enugu",
+          "Delta",
+          "Kaduna",
+          "Anambra",
+          "Ogun",
+        ].map((state) => ({ value: state, label: state })),
+      },
+    ],
+  },
+  {
+    id: "NIN_DELINKING",
+    code: "nin-delinking",
+    name: "Delinking service",
+    tagline: "Release a NIN from the wrong record",
+    description:
+      "Detaches a NIN from a record it was wrongly linked to, such as a duplicated enrolment or an identity mixed up at a centre.",
+    category: "RECORD",
+    priceKobo: 200_000,
+    turnaroundLabel: "1 to 2 working days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      NIN_FIELD,
+      {
+        name: "reason",
+        label: "Why should this record be delinked?",
+        type: "textarea",
+        required: true,
+        placeholder: "Describe the duplicate or incorrect link",
+        maxLength: 500,
+      },
+    ],
+  },
+  {
+    id: "NIN_NAME_CHANGE",
+    code: "nin-name-change",
+    name: "Name change / correction",
+    tagline: "Change the name on a NIN record",
+    description:
+      "Submits a name correction or change of name on an existing record. Supporting documents are quoted by the desk after review.",
+    category: "RECORD",
+    priceKobo: 500_000,
+    turnaroundLabel: "3 to 7 working days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      NIN_FIELD,
+      {
+        name: "newFirstName",
+        label: "New first name",
+        type: "text",
+        required: true,
+        maxLength: 60,
+      },
+      {
+        name: "newLastName",
+        label: "New surname",
+        type: "text",
+        required: true,
+        maxLength: 60,
+      },
+      {
+        name: "reason",
+        label: "Reason for the change",
+        type: "select",
+        required: true,
+        options: [
+          { value: "marriage", label: "Marriage" },
+          { value: "divorce", label: "Divorce" },
+          { value: "correction", label: "Spelling correction" },
+          { value: "deed-poll", label: "Deed poll" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "NIN_PHONE_CHANGE",
+    code: "nin-phone-change",
+    name: "Phone number update",
+    tagline: "Move a NIN to a new phone number",
+    description:
+      "Replaces the phone number attached to a NIN record, for lost lines or numbers that were never registered to the holder.",
+    category: "RECORD",
+    priceKobo: 400_000,
+    turnaroundLabel: "1 to 3 working days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      NIN_FIELD,
+      {
+        name: "newPhone",
+        label: "New phone number",
+        type: "phone",
+        required: true,
+        placeholder: "0803 123 4567",
+        secret: true,
+      },
+      DOB_FIELD,
+    ],
+  },
+  {
+    id: "NIN_DOB_CHANGE",
+    code: "nin-dob-change",
+    name: "Date of birth correction",
+    tagline: "Correct a date of birth on record",
+    description:
+      "Raises a date-of-birth correction for review. A sworn affidavit and an age-evidence document are required at the desk.",
+    category: "RECORD",
+    priceKobo: 800_000,
+    turnaroundLabel: "5 to 10 working days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      NIN_FIELD,
+      { ...DOB_FIELD, label: "Correct date of birth" },
+      {
+        name: "reason",
+        label: "Reason for the correction",
+        type: "textarea",
+        required: true,
+        maxLength: 500,
+      },
+    ],
+  },
+  {
+    id: "NIN_ADDRESS_CHANGE",
+    code: "nin-address-change",
+    name: "Address update",
+    tagline: "Update the address on a NIN record",
+    description:
+      "Updates the residential address attached to a NIN record, which some banks and schools require before issuing identity documents.",
+    category: "RECORD",
+    priceKobo: 450_000,
+    turnaroundLabel: "2 to 4 working days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      NIN_FIELD,
+      {
+        name: "address",
+        label: "New residential address",
+        type: "textarea",
+        required: true,
+        maxLength: 300,
+      },
+      {
+        name: "state",
+        label: "State",
+        type: "select",
+        required: true,
+        options: [
+          "Lagos",
+          "Abuja (FCT)",
+          "Rivers",
+          "Oyo",
+          "Kano",
+          "Enugu",
+          "Delta",
+          "Kaduna",
+          "Anambra",
+          "Ogun",
+        ].map((state) => ({ value: state, label: state })),
+      },
+    ],
+  },
+  {
+    id: "NIN_CHILD_ENROLMENT",
+    code: "nin-child-enrolment",
+    name: "Child enrolment",
+    tagline: "Enrol a child under 16",
+    description:
+      "Books a NIN enrolment for a child under 16. The parent or guardian's NIN is required as the sponsoring record.",
+    category: "ENROLMENT",
+    priceKobo: 300_000,
+    turnaroundLabel: "Appointment in 1 to 3 days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      {
+        name: "firstName",
+        label: "Child's first name",
+        type: "text",
+        required: true,
+        maxLength: 60,
+      },
+      {
+        name: "lastName",
+        label: "Child's surname",
+        type: "text",
+        required: true,
+        maxLength: 60,
+      },
+      { ...DOB_FIELD, label: "Child's date of birth" },
+      {
+        name: "guardianNin",
+        label: "Parent or guardian NIN",
+        type: "nin",
+        required: true,
+        maxLength: 11,
+        secret: true,
+      },
+      PHONE_FIELD,
+    ],
+  },
+  {
+    id: "NIN_ADULT_ENROLMENT",
+    code: "nin-adult-enrolment",
+    name: "Adult enrolment",
+    tagline: "Book a first-time NIN enrolment",
+    description:
+      "Books a first-time NIN enrolment for an adult, including diaspora arrivals, and returns the appointment centre and reference.",
+    category: "ENROLMENT",
+    priceKobo: 500_000,
+    turnaroundLabel: "Appointment in 1 to 5 days",
+    resultKind: "ACKNOWLEDGEMENT",
+    fields: [
+      {
+        name: "firstName",
+        label: "First name",
+        type: "text",
+        required: true,
+        maxLength: 60,
+      },
+      {
+        name: "lastName",
+        label: "Surname",
+        type: "text",
+        required: true,
+        maxLength: 60,
+      },
+      PHONE_FIELD,
+      {
+        name: "state",
+        label: "Enrolment state",
+        type: "select",
+        required: true,
+        options: [
+          "Lagos",
+          "Abuja (FCT)",
+          "Rivers",
+          "Oyo",
+          "Kano",
+          "Enugu",
+          "Delta",
+          "Kaduna",
+          "Anambra",
+          "Ogun",
+        ].map((state) => ({ value: state, label: state })),
+      },
+    ],
+  },
+];
+
+export function identityServiceById(id: string): IdentityServiceDef | undefined {
+  return IDENTITY_SERVICES.find((service) => service.id === id);
+}
 
 /* ── Admin sections ──────────────────────────────────────────────────────── */
 
@@ -95,6 +554,11 @@ export const ADMIN_SECTIONS = [
     key: "TRANSACTIONS",
     label: "Transactions",
     description: "Review every purchase and settlement across the platform.",
+  },
+  {
+    key: "VERIFICATIONS",
+    label: "Identity services",
+    description: "Watch verification requests, tune pricing and switch products on or off.",
   },
   {
     key: "AUDIT",
@@ -144,6 +608,7 @@ export const FEES_KOBO: Record<Exclude<TransactionType, "WALLET_FUNDING">, numbe
   DATA: 0,
   CABLE: 0,
   ELECTRICITY: 10_000,
+  VERIFICATION: 0,
 };
 
 export const LIMITS = {
@@ -170,6 +635,7 @@ export interface UserDTO {
   email: string;
   phone: string;
   role: UserRole;
+  accountType: AccountType;
   isAdmin: boolean;
   isSuperAdmin: boolean;
   adminSections: AdminSection[];
@@ -272,6 +738,101 @@ export interface TransactionSummaryDTO {
   serviceMix: { type: TransactionType; amountKobo: number; count: number }[];
 }
 
+/* ── Identity DTOs ───────────────────────────────────────────────────────── */
+
+export interface IdentityProductDTO {
+  id: IdentityServiceId;
+  code: string;
+  name: string;
+  tagline: string;
+  description: string;
+  category: IdentityCategory;
+  priceKobo: number;
+  turnaroundLabel: string;
+  resultKind: IdentityResultKind;
+  popular: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  fields: IdentityFieldDef[];
+}
+
+export interface IdentityResultField {
+  label: string;
+  value: string;
+}
+
+export interface IdentityDocument {
+  fileName: string;
+  mimeType: string;
+  /** Base64 payload; only returned to the owning customer. */
+  contentBase64: string;
+}
+
+export interface IdentityResultDTO {
+  kind: IdentityResultKind;
+  fields: IdentityResultField[];
+  document: IdentityDocument | null;
+  note: string | null;
+}
+
+export interface IdentityRequestDTO {
+  id: string;
+  reference: string;
+  productId: IdentityServiceId;
+  productName: string;
+  category: IdentityCategory;
+  status: IdentityRequestStatus;
+  amountKobo: number;
+  subjectMasked: string;
+  summary: string;
+  turnaroundLabel: string;
+  failureReason: string | null;
+  transactionId: string | null;
+  result: IdentityResultDTO | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface IdentityPurchaseResultDTO {
+  request: IdentityRequestDTO;
+  transaction: TransactionDTO;
+  wallet: WalletDTO;
+  replay?: boolean;
+}
+
+export interface IdentityOverviewDTO {
+  totalRequests: number;
+  successCount: number;
+  failedCount: number;
+  pendingCount: number;
+  revenueKobo: number;
+  todayCount: number;
+  successRate: number;
+  products: { productId: IdentityServiceId; name: string; count: number; amountKobo: number }[];
+}
+
+export interface AdminIdentityRequestDTO extends IdentityRequestDTO {
+  user: { id: string; name: string; email: string };
+  actorType: "SESSION" | "API_KEY";
+  apiKeyName: string | null;
+  error: string | null;
+}
+
+export interface ApiKeyDTO {
+  id: string;
+  name: string;
+  prefix: string;
+  environment: "LIVE" | "TEST";
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface IssuedApiKeyDTO extends ApiKeyDTO {
+  /** Full key — shown once, never retrievable again. */
+  key: string;
+}
+
 /* ── Catalog DTOs ────────────────────────────────────────────────────────── */
 
 export interface DataPlanDTO {
@@ -343,6 +904,7 @@ export interface RegisterPayload {
   phone: string;
   password: string;
   pin: string;
+  accountType?: AccountType;
 }
 
 export interface LoginPayload {
@@ -383,6 +945,29 @@ export interface ElectricityPayload {
 export interface FundWalletPayload {
   amountKobo: number;
   method: FundingMethod;
+}
+
+export interface IdentityRequestPayload {
+  service: IdentityServiceId;
+  fields: Record<string, string>;
+  consent: boolean;
+  /** Required for wallet-funded session purchases; omitted for API-key calls. */
+  pin?: string;
+}
+
+export interface IdentityQuoteDTO {
+  service: IdentityServiceId;
+  name: string;
+  priceKobo: number;
+  feeKobo: number;
+  totalKobo: number;
+  turnaroundLabel: string;
+}
+
+export function maskIdentifier(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 4) return "•".repeat(Math.max(digits.length, 4));
+  return `${"•".repeat(digits.length - 4)}${digits.slice(-4)}`;
 }
 
 /* ── Phone helpers ───────────────────────────────────────────────────────── */
@@ -484,6 +1069,7 @@ export const SERVICE_LABELS: Record<TransactionType, string> = {
   DATA: "Data bundle",
   CABLE: "Cable TV",
   ELECTRICITY: "Electricity",
+  VERIFICATION: "Identity verification",
   WALLET_FUNDING: "Wallet funding",
 };
 

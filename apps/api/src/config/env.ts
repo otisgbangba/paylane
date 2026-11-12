@@ -19,7 +19,7 @@ if (nodeEnv !== "test" && jwtSecret === "paylane-local-dev-secret-change-me-plea
 export const env = {
   nodeEnv,
   isProduction: nodeEnv === "production",
-  port: Number(process.env.API_PORT ?? 4000),
+  port: Number(process.env.PORT ?? process.env.API_PORT ?? 4000),
   jwtSecret,
   jwtExpiresIn: "7d",
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:3100",
@@ -28,4 +28,20 @@ export const env = {
   cookieName: "paylane_session",
   cookieSecure: readBoolean(process.env.COOKIE_SECURE, nodeEnv === "production"),
   webhookSecret: process.env.VENDOR_WEBHOOK_SECRET ?? "dev-vendor-webhook-secret",
+  apiKeyPepper: process.env.API_KEY_PEPPER ?? jwtSecret,
+  identity: {
+    /** AUTO uses the HTTP vendor only when a base URL and key are configured. */
+    mode: (process.env.IDENTITY_VENDOR_MODE ?? "AUTO").toUpperCase() as "AUTO" | "HTTP" | "MOCK",
+    baseUrl: process.env.IDENTITY_VENDOR_BASE_URL?.trim() || null,
+    apiKey: process.env.IDENTITY_VENDOR_API_KEY?.trim() || null,
+    apiSecret: process.env.IDENTITY_VENDOR_API_SECRET?.trim() || null,
+    verifyPath: process.env.IDENTITY_VENDOR_VERIFY_PATH?.trim() || "/verify",
+    timeoutMs: Number(process.env.IDENTITY_VENDOR_TIMEOUT_MS ?? 15_000),
+    resultRetentionDays: Number(process.env.IDENTITY_RESULT_RETENTION_DAYS ?? 90),
+    digestSecret: process.env.IDENTITY_DIGEST_SECRET ?? jwtSecret,
+  },
 } as const;
+
+export const identityVendorConfigured = Boolean(
+  env.identity.baseUrl && env.identity.apiKey,
+);

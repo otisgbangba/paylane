@@ -33,6 +33,7 @@ export const registerSchema = z.object({
   phone: phoneField,
   password: passwordField,
   pin: pinField,
+  accountType: z.enum(["INDIVIDUAL", "AGENT", "ORGANISATION"]).optional(),
 });
 
 export const loginSchema = z.object({

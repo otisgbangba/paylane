@@ -27,6 +27,7 @@ const MIX_COLORS: Record<TransactionType, string> = {
   DATA: "bg-sky",
   CABLE: "bg-violet",
   ELECTRICITY: "bg-amber",
+  VERIFICATION: "bg-success",
   WALLET_FUNDING: "bg-coral",
 };
 
@@ -200,6 +201,7 @@ export default async function AdminOverviewPage() {
                 USERS: "/admin/users",
                 WALLETS: "/admin/wallets",
                 TRANSACTIONS: "/admin/transactions",
+                VERIFICATIONS: "/admin/verifications",
                 AUDIT: "/admin/audit",
                 OVERVIEW: "/admin",
                 TEAM: "/admin/team",

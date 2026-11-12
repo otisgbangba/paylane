@@ -37,6 +37,7 @@ export function TypeChip({ type }: { type: TransactionType }) {
     DATA: "Data",
     CABLE: "Cable TV",
     ELECTRICITY: "Electricity",
+    VERIFICATION: "Identity",
     WALLET_FUNDING: "Funding",
   };
   return (

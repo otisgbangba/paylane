@@ -54,6 +54,7 @@ export async function registerUser(
           phone: input.phone,
           passwordHash,
           pinHash,
+          accountType: input.accountType ?? "INDIVIDUAL",
         })
         .returning();
       if (!user) throw new Error("User insert returned no row");

@@ -15,8 +15,10 @@ import {
   User,
 } from "lucide-react";
 import {
+  ACCOUNT_TYPES,
   detectNetwork,
   normalizeNigerianPhone,
+  type AccountType,
   type UserDTO,
 } from "@paylane/shared";
 import { apiRequest } from "@/lib/client-api";
@@ -33,6 +35,7 @@ interface FormState {
   password: string;
   pin: string;
   confirmPin: string;
+  accountType: AccountType;
 }
 
 const initialState: FormState = {
@@ -43,6 +46,7 @@ const initialState: FormState = {
   password: "",
   pin: "",
   confirmPin: "",
+  accountType: "INDIVIDUAL",
 };
 
 export function RegisterForm() {
@@ -58,7 +62,7 @@ export function RegisterForm() {
   const phoneValid = Boolean(normalizeNigerianPhone(form.phone));
   const passwordValid = form.password.length >= 8 && /[A-Za-z]/.test(form.password) && /\d/.test(form.password);
 
-  function update(key: keyof FormState, value: string) {
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => ({ ...current, [key]: undefined }));
     setError(null);
@@ -91,6 +95,7 @@ export function RegisterForm() {
         phone: form.phone.trim(),
         password: form.password,
         pin: form.pin,
+        accountType: form.accountType,
       },
     });
     if (!response.success) {
@@ -117,8 +122,8 @@ export function RegisterForm() {
         Open your Paylane wallet.
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-ink/55">
-        One account for airtime, data, cable and electricity. Buy your first top-up in under a
-        minute.
+        One account for airtime, data, cable, electricity and identity checks. Fund a wallet and
+        run your first request in under a minute.
       </p>
 
       {error ? (
@@ -199,6 +204,46 @@ export function RegisterForm() {
             placeholder="0803 123 4567"
           />
           <FieldError>{fieldErrors.phone}</FieldError>
+        </div>
+
+        <div>
+          <FieldLabel htmlFor="register-account-type">How will you use Paylane?</FieldLabel>
+          <div id="register-account-type" className="grid gap-2 sm:grid-cols-3">
+            {ACCOUNT_TYPES.map((type) => {
+              const selected = form.accountType === type.id;
+              return (
+                <label
+                  key={type.id}
+                  className={cn(
+                    "cursor-pointer rounded-2xl border p-3 transition",
+                    selected
+                      ? "border-ink bg-ink text-cream shadow-[0_14px_30px_-22px_rgba(11,22,19,0.9)]"
+                      : "border-line bg-white hover:border-ink/25",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value={type.id}
+                    checked={selected}
+                    onChange={() => update("accountType", type.id)}
+                    className="sr-only"
+                  />
+                  <span className={cn("block text-xs font-bold", selected ? "text-white" : "text-ink")}>
+                    {type.label}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-0.5 block text-[0.6rem] leading-relaxed",
+                      selected ? "text-white/50" : "text-muted",
+                    )}
+                  >
+                    {type.description}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <div>
@@ -285,8 +330,8 @@ export function RegisterForm() {
       </form>
 
       <p className="mt-4 text-center text-[0.65rem] leading-relaxed text-muted">
-        Paylane is a demonstration platform. No real money is moved and no card details are
-        collected.
+        Wallet funding runs in sandbox mode, so no real card is charged. Identity results are
+        labelled sandbox until live vendor credentials are configured.
       </p>
 
       <p className="mt-5 text-center text-sm text-ink/55">
